@@ -1,0 +1,200 @@
+﻿CSE143 Notes for Monday, 1/3/22
+I briefly discussed the syllabus (handout 1) which can be found on the class web page.
+I started by pointing out that in the first two assignments we will be reviewing arrays and classes. It would be especially helpful to review chapters 7 (arrays) and 8 (classes) of the textbook as we work through this material.
+
+I mentioned an idea that I got from Arthur Riel who has written a book on object-oriented design heuristics. Following Riel's advice, I asked everyone in the audience who knows how to use a radio to raise their hand. All the hands went up. Then I asked people to raise their hand if they know how to build a radio from low-level electronic parts. Fewer than 5% of the class raised their hand. This is an important distinction to understand. We all know how to use a radio, but only some of us know how to build one.
+
+In programming, we refer to this as the "client" view and the "implementation" or "implementor" view. Another way of thinking of this is that the external/client view is the "what" part (knowing what the object does) and the internal/implementation view is the "how" part (knowing how the object does it). This is going to be an important concept to understand as we progress through cse143. One of the things that makes this more confusing in cse143 is that we will ask you to switch back and forth between these two views, implementing an object at the same time that you think about how it will be manipulated from the outside by a client.
+
+I mentioned that I will be using Java's ArrayList class as a kind of software cadaver that we will dissect as the quarter progresses. ArrayList is one of the most commonly used classes in the Java Class Libraries. It will take us a while to understand it because of its complexity. To simplify things, we will study something that I call ArrayIntList, which is a variation of ArrayList for storing int values. Even this simplification won't be enough to allow us to understand the class right away, so my plan is to develop the class through several stages, adding functionality at each stage.
+
+I said that we'd need some client code. I suggested that we have something very simple that creates two lists, adds some values to each and prints them. Suppose you're going to write a class like this (where I'm using pseudocode in comments to indicate what I plan to do):
+
+        public class ArrayIntListClient {
+            public static void main(String[] args) {
+                // construct ArrayIntList list1
+                // construct ArrayIntList list2
+                // add 1, 82, 97 to list1
+                // add 7, -8 to list2
+                // print list1
+                // print list2
+            }
+        }
+We are going to implement the ArrayIntList as an unfilled array, so we need two variables. We need an array and we need a size variable. Remember that there is a difference between the capacity of the list (the length of the array) and the current size. Our plan is to start out with an empty list initially and to fill it up as the client requests us to add values.
+If we're going to have two ArrayIntLists, as in the pseudocode above, then we'd need four variables (two arrays and two sizes). Obviously this isn't a good solution. This is where the ArrayIntList class comes in. Instead of declaring two arrays and two sizes, we can include those variables inside the ArrayIntList class:
+
+        public class ArrayIntList {
+            int[] elementData;
+            int size;
+        }
+The two variables (the array called elementData and the variable called size) become the data fields or instance variables of the class. These variables become part of what we call the "state" of the object. Once the object is constructed, these variables have a permanence to them that local variables don't have. They stay around indefinitely. They are the "innards" that allow this object to do what it has to do.
+So we avoid having four different variables (two arrays and two sizes) by having two different objects (each with its own array and its own size). They will need to be constructed, which means the first two lines in our client code will become calls on "new":
+
+        public class ArrayIntListClient {
+            public static void main(String[] args) {
+                ArrayIntList list1 = new ArrayIntList();
+                ArrayIntList list2 = new ArrayIntList();
+                // add 1, 82, 97 to list1
+                // add 7, -8 to list2
+                // print list1
+                // print list2
+            }
+        }
+We saw in jGRASP that this created two objects each of which had an array field called elementData and a size field. But elementData was set to null for each. That's because we never told Java to actually construct an array. Every time you call new, Java is actually calling a special method known as a constructor. There is a special syntax for constructors. They must have the same name as the class and they have no return type. For example, to define a constructor that has no parameters, you'd say something like this:
+        public class ArrayIntList {
+            int[] elementData;
+            int size;
+
+            public ArrayIntList() {
+                // constructor code here
+                ...
+            }
+
+            ...
+        }
+It seems odd that we could construct objects of type ArrayIntList without defining a constructor for the class. Java has a special rule that if you define no constructors whatsoever, it will provide a constructor for you that has no parameters. So even though we didn't define a constructor, Java defined one for us.
+To explore this, I defined a constructor and included code to initialize the array and size:
+
+        public class ArrayIntList {
+            int[] elementData;
+            int size;
+
+            public ArrayIntList() {
+                elementData = new int[100];
+                size = 0;
+            }
+
+            ...
+        }
+I pointed out that in our grading, we are going to expect that code to initialize fields should appear in a constructor. This is considered better style in Java and we'd like you to do it that way.
+The initialization of size is not really necessary. Java automatically initializes fields to the zero-equivalent for that type. All int fields are initialized to 0. All double fields are initialized to 0.0. All boolean fields are initialized to false. And fields that store references to objects like elementData are initialized to null (a special value that means "no object"). As a result, the size field will be initialized to 0 with or without the line of code in the constructor. There is disagreement among Java programmers about which style is better. Some people argue that it is best to be explicit about initialization. Others argue that you should know how Java works and should be thinking about auto-initialization.
+
+When we ran the client code again and looked at the list objects in jGRASP, we saw that now each one had its own array of length 100.
+
+Then I mentioned a common error that students make in writing their constructors. We normally have to mention a type when we are initializing a variable, so what if we said this:
+
+        public ArrayIntList() {
+            int[] elementData = new int[100];
+            size = 0;
+        }
+The only difference between this and the other version is that we put "int[]" in front of "elementData." That is a disastrous choice. Even though our field called elementData is of type int[], if we include a type here, Java assumes we are declaring a local variable. So this introduces a second variable called elementData which refers to an array of length 100. This has no effect on the field called elementData. The technical term for this is that the local variable "shadows" the field. As a result, our field elementData will have the value null even though we set up a local variable of the same name to refer to an array of length 100. There isn't much difference between the two lines of code, but there is a world of difference between how Java understands what you are asking for:
+        elementData = new int[100];         // sets a field
+        int[] elementData = new int[100];   // sets a local variable
+Then we turned to the idea of adding values to the list. We could directly manipulate the two fields inside of each list object. For example, to add the values 1, 82, 97, to list1, we could set each array element and set the size:
+        public class ArrayIntListClient {
+            public static void main(String[] args) {
+                ArrayIntList list1 = new ArrayIntList();
+                ArrayIntList list2 = new ArrayIntList();
+                // add 1, 82, 97 to list1
+                list1.elementData[0] = 1;
+                list1.elementData[1] = 82;
+                list1.elementData[2] = 97;
+                list1.size = 3;
+                // add 7, -8 to list2
+                // print list1
+                // print list2
+            }
+        }
+But this isn't a very object-oriented approach. We don't want to make the client have to deal with low-level details of the class. Instead, it makes sense to introduce an add method that we can call from the client code:
+        public class ArrayIntListClient {
+            public static void main(String[] args) {
+                ArrayIntList list1 = new ArrayIntList();
+                ArrayIntList list2 = new ArrayIntList();
+                list1.add(1);
+                list1.add(82);
+                list1.add(97);
+                list2.add(7);
+                list2.add(-8);
+                // print list1
+                // print list2
+            }
+        }
+Notice that each time we call add, we indicate which list we want to add values to (list1 for the first three calls on add, list2 for the next two calls). So we want to include an add method in our ArrayIntList class.
+We thought about where values should be added to the list as it grows. Consider the series of calls on add that are supposed to put the values 1, 82, and 97 into the list. Here is what we would happen on each call:
+
+    list contents    size    where to add
+    --------------------------------------
+    []                0      elementData[0]
+    [1]               1      elementData[1]
+    [1, 82]           2      elementData[2]
+    [1, 82, 97]       3
+Notice that each time, the size field tells you exactly what index you want to use for the new value and size goes up by one each time. In other words, we want to execute these two lines of code for each call on add:
+        elementData[size] = value;
+        size++;
+We can put this inside a method called "add". What would it's parameters be? Obviously it would need to know the value to be appended to the list. But how does the method get access to the array called elementData and the variable called size?
+We first wrote this as a static method that we included in the client program:
+
+        public static void add(ArrayIntList list, int value) {
+            list.elementData[list.size] = value;
+            list.size++;
+        }
+And we called it this way:
+    add(list1, 1);
+    add(list1, 82);
+    add(list1, 97);
+This worked, but it's not the object oriented way. Suppose there are ten client programs that need this operation. Why write this method ten times? The better thing is to include this in the class. The answer is that we are going to write an instance method which has something known as an implicit parameter.
+We remove the word static from the header and get rid of the ArrayIntList parameter to turn this into an instance method:
+
+        public void add(int value) {
+            // defines an instance method add
+            ...
+        }
+Instance methods require the dot notation when you call them. With a static method you could say:
+        add(list1, 17);  // call on static method
+With an instance method, we have to mention which list we want to add a value to, as in:
+        list1.add(1);  // calling instance method on list1
+        list2.add(7);  // calling instance method on list2
+The variable that appears before the dot is known as the implicit parameter. In the first call above, list1 is the implicit parameter. It's as if someone were to shout, "Hey, list1! I'm talking to you. I want you to execute your add method with a value of 1." In the second call, list2 is the implicit parameter ("Hey, list2! I'm talking to you. Execute your add method with a value of 7").
+After adding this method to the ArrayIntList class it looked like this:
+
+        public class ArrayIntList {
+            int[] elementData;
+            int size;
+
+            public ArrayIntList(int capacity) {
+                elementData = new int[capacity];
+                size = 0;
+            }
+
+            public void add(int value) {
+                elementData[size] = value;
+                size++;
+            }
+        }
+There are two key ideas here. First, each instance of the ArrayIntList class has its own fields called elementData and size. Second, when we call an instance method like add, there is an implicit parameter (a particular object that we are talking to). When we refer to variables like elementData and size inside an instance method, we are saying, "Modify the fields of the object you are talking to."
+We then added a toString method to the class to allow us to show the contents of the list:
+
+        public String toString() {
+            if (size == 0) {
+                return "[]";
+            } else {
+                String result = "[" + elementData[0];
+                for (int i = 1; i < size; i++) {
+                    result += ", " + elementData[i];
+                }
+                result += "]";
+                return result;
+            }
+        }
+We then were able to change our client code to print the lists by calling toString:
+        public class ArrayIntListClient {
+            public static void main(String[] args) {
+                ArrayIntList list1 = new ArrayIntList();
+                ArrayIntList list2 = new ArrayIntList();
+                list1.add(1);
+                list1.add(82);
+                list1.add(97);
+                list2.add(7);
+                list2.add(-8);
+                System.out.println(list1);
+                System.out.println(list2);
+            }
+        }
+I also couldn't let everyone leave the lecture without setting the fields to be private in ArrayIntList:
+        public class ArrayIntList {
+            private int[] elementData;
+            private int size;
+
+            ...
+        }
+I said that we would discuss this more in section and in the next lecture.
